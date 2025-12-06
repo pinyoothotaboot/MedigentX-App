@@ -5,6 +5,8 @@ export interface User {
   name: string;
   license: string;
   role: 'doctor' | 'admin';
+  firstName?: string;
+  lastName?: string;
 }
 
 export enum NoteType {
@@ -19,13 +21,22 @@ export enum NoteType {
 export interface Patient {
   id: string;
   mrn: string;
-  name: string;
+  patientId?: string;
+  name: string; // Composite name for backward compatibility
+  firstName?: string;
+  lastName?: string;
   age: number;
   gender: 'Male' | 'Female' | 'Other';
+  sex?: 'Male' | 'Female' | 'Other'; // Alias for gender in new forms
   dob: string;
+  dateOfBirth?: string; // Alias for dob
   noteTypePreference: NoteType;
+  noteType?: string; // Alias for noteTypePreference
+  weight?: number;
+  height?: number;
   allergies: string[];
   conditions: string[];
+  chronicConditions?: string[];
   lastVisit?: string;
 }
 
@@ -39,6 +50,28 @@ export interface SOAPNote {
   assessment: string;
   plan: string;
   isDraft: boolean;
+}
+
+export interface NoteContent {
+  subjective?: string;
+  objective?: string;
+  assessment?: string;
+  plan?: string;
+  [key: string]: any;
+}
+
+export interface Note {
+  id: string;
+  patientId: string;
+  title: string;
+  type: string;
+  noteType?: string;
+  content: NoteContent;
+  createdAt: string;
+  updatedAt: string;
+  status: 'draft' | 'completed';
+  isDraft: boolean;
+  isLocalOnly: boolean;
 }
 
 export interface ChatMessage {
