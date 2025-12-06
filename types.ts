@@ -53,3 +53,9 @@ export interface StreamChunk {
   done: boolean;
   heartbeat?: boolean;
 }
+
+export interface ICD10Code {
+  code: string;
+  description: string;
+  category: string;
+}
