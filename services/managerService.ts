@@ -1,5 +1,5 @@
 
-import { IProvider } from "./geminiService";
+import type { IProvider } from "./geminiService";
 import { ProcessContext } from "./processContext";
 import { Orchestrator } from "./orchestratorService";
 import { Planner } from "./plannerService";
@@ -62,7 +62,6 @@ export class Manager {
   private initializeBlueprints() {
     this.blueprints["StrategicPlanningMiniAgent_Blueprint"] = STRATEGIC_PLANNING_PROMPT_V1;
     this.blueprints["AgentSpecificationMiniAgent_Blueprint"] = ARCHITECT_PROMPT_V1;
-    // this.blueprints["CodeCrafterMiniAgent_Blueprint"] = CODING_MINI_AGENT_BLUEPRINT_V1; // Need definition or remove
     this.blueprints["VerificationMiniAgent_Blueprint"] = VERIFICATION_MINI_AGENT_BLUEPRINT_V1;
     this.blueprints["OutputConsolidationMiniAgent_Blueprint"] = OUTPUT_CONSOLIDATION_PROMPT_V1;
     

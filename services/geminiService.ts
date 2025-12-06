@@ -2,7 +2,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { NoteType, AIMessage, FrontendRequest, TranslateLangType } from "../types";
 import { Manager } from "./managerService";
-import { MEDICAL_NOTE_MASTER_PROMPT_V1 } from "./promptTemplates";
 
 // Simple logger to mimic the Python logger interface
 const logger = {
@@ -118,46 +117,57 @@ export class GeminiService implements IProvider {
       return;
     }
 
-    try {
-        // Use Manager for advanced workflow
-        // This simulates a streaming interface by yielding progress updates
-        
-        let finalResponse = "";
-        const progressHandler = (msg: string) => {
-             // In a real implementation with generator, we can't easily yield from callback
-             // But we can simulate "thinking" steps or use a queue.
-             // For this implementation, we will log progress
-             logger.info("Progress:", msg);
-        };
+    // Queue to hold progress messages
+    const queue: string[] = [];
+    let isComplete = false;
+    let finalContent = "";
+    let error: any = null;
 
-        const manager = new Manager(this, progressHandler);
-        
-        const request: FrontendRequest = {
-            llm_provider: "gemini",
-            llm_model: this.model,
-            session_id: `sess_${Date.now()}`,
-            system_prompt: this.getNoteTypeSystemPromptKey(noteType),
-            user_prompt: message,
-            language: TranslateLangType.ENGLISH // Default
-        };
+    // Callback that pushes to queue, allowing us to yield intermediate states
+    const progressHandler = (msg: string) => {
+        queue.push(`> ⚙️ ${msg}\n`);
+    };
 
-        // Yield initial thought to show it's working
-        yield "> *Initializing MediGentX Agent Swarm...*\n\n";
+    const manager = new Manager(this, progressHandler);
+    
+    const request: FrontendRequest = {
+        llm_provider: "gemini",
+        llm_model: this.model,
+        session_id: `sess_${Date.now()}`,
+        system_prompt: this.getNoteTypeSystemPromptKey(noteType),
+        user_prompt: message,
+        language: TranslateLangType.ENGLISH // Default
+    };
 
-        // Since Manager.process is async and not a generator, we wait for full result
-        // But we can yield "steps" based on timing or if we refactor Manager to be a generator
-        // For now, we wait.
-        
-        const response = await manager.process(request);
-        
-        if (response.message.content) {
-            yield response.message.content;
+    // Start background process
+    manager.process(request)
+        .then(response => {
+            finalContent = response.message.content;
+            isComplete = true;
+        })
+        .catch(err => {
+            error = err;
+            isComplete = true;
+        });
+
+    // Generator loop that polls the queue
+    while (!isComplete || queue.length > 0) {
+        if (queue.length > 0) {
+            const msg = queue.shift()!;
+            yield msg;
+        } else {
+            // Small wait to prevent busy loop
+            await new Promise(resolve => setTimeout(resolve, 100));
         }
-
-    } catch (error) {
-      logger.error("Stream Chat Error", error);
-      yield "\n\n**Error: Service unavailable or Agent workflow failed.**";
+        
+        if (error) {
+            yield `\n❌ Error: ${error.message || "Unknown error occurred"}`;
+            return;
+        }
     }
+
+    // Yield final separator and content
+    yield "\n\n" + finalContent;
   }
 }
 
