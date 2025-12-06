@@ -90,7 +90,16 @@ export class GeminiService implements IProvider {
     try {
       let text = response.content.trim();
       
-      // Remove markdown code blocks ```json ... ```
+      // Robust JSON extraction: Find the first '{' and last '}'
+      // This handles cases where the model adds conversational filler like "Okay, here is the JSON: ..."
+      const firstBrace = text.indexOf('{');
+      const lastBrace = text.lastIndexOf('}');
+      
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        text = text.substring(firstBrace, lastBrace + 1);
+      }
+
+      // Remove markdown code blocks ```json ... ``` just in case they were inside the extracted block or if extraction failed
       if (text.startsWith("```json")) {
         text = text.replace(/^```json\s*/, "").replace(/\s*```$/, "");
       } else if (text.startsWith("```")) {

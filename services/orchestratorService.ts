@@ -1,4 +1,3 @@
-
 import { IProvider } from "../types";
 import { RetryJsonParser } from "./retryJsonParser";
 import { UserQueryInternal } from "../types";
@@ -25,7 +24,21 @@ export class Orchestrator {
   }
 
   public getUserPrompt(userQueryInternal: UserQueryInternal): string {
-    return `User's primary goal is: '${userQueryInternal.original_user_content}'. Additional guidelines: '${userQueryInternal.additional_guidelines}'. Commence full process.`;
+    return `
+    User's primary goal is: '${userQueryInternal.original_user_content}'. 
+    Additional guidelines: '${userQueryInternal.additional_guidelines}'. 
+    
+    Commence full process.
+    
+    **CRITICAL**: Respond with a SINGLE valid JSON object. Do not reply with conversational text like "Okay, Nexus".
+    
+    Expected JSON Structure:
+    {
+      "thought": "Brief analysis of the user's intent...",
+      "next_action": "PROCEED_WITH_PLANNING" or "REQUEST_CLARIFICATION",
+      "clarification_question": "If ambiguous, ask here, otherwise null"
+    }
+    `;
   }
 
   public async processGoalIngestionAndAnalysis(

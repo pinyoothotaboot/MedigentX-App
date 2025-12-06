@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import { useAppDispatch, useAppSelector } from '../store';
-import { setCurrentPatientId } from '../store/appSlice';
+import { setCurrentPatientId, setCurrentView } from '../store/appSlice';
+import { setCurrentPatient } from '../store/patientsSlice';
 
 interface SearchBarProps {
   onResultSelect?: () => void;
@@ -21,7 +22,12 @@ const SearchBar: React.FC<SearchBarProps> = ({ onResultSelect }) => {
     : [];
 
   const handleSelect = (patientId: string) => {
-    dispatch(setCurrentPatientId(patientId));
+    const patient = patients.find(p => p.id === patientId);
+    if (patient) {
+        dispatch(setCurrentPatientId(patient.id));
+        dispatch(setCurrentPatient(patient));
+        dispatch(setCurrentView('chat'));
+    }
     setSearchTerm('');
     if (onResultSelect) onResultSelect();
   };
