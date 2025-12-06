@@ -1,4 +1,22 @@
+
 import { ICD10Code } from '../types';
+
+export class ICD10SearchResult {
+    codes: ICD10Code[] = [];
+    count: number = 0;
+    
+    add_code(code: ICD10Code) {
+        this.codes.push(code);
+        this.count++;
+    }
+
+    to_dict() {
+        return {
+            count: this.count,
+            codes: this.codes
+        };
+    }
+}
 
 /**
  * Service to interact with the NIH ICD-10 API.
@@ -29,18 +47,18 @@ export class ICD10Service {
   /**
    * Search for ICD-10 codes using a query term.
    * @param query The search term (e.g., "asthma")
-   * @returns Array of ICD10Code objects or null if service is unavailable/fails
+   * @param sf Search fields (default: "code,name")
+   * @param maxList Max results (default: 7)
+   * @returns ICD10SearchResult or null if service is unavailable/fails
    */
-  public async search(query: string): Promise<ICD10Code[] | null> {
-    // 1. Circuit Breaker Check
+  public async search({ terms, sf = "code,name", maxList = 7 }: { terms: string, sf?: string, maxList?: number }): Promise<ICD10SearchResult | null> {
+    // Circuit Breaker check
     if (this.failureCount >= this.circuitBreakerThreshold) {
-      const now = Date.now();
-      if (now < this.circuitBreakerOpenUntil) {
-        console.warn(`[ICD10Service] Circuit breaker open. Skipping request. Retry after ${new Date(this.circuitBreakerOpenUntil).toLocaleTimeString()}`);
+      if (Date.now() < this.circuitBreakerOpenUntil) {
+        console.warn("ICD-10 Service Circuit Breaker Open. Request blocked.");
         return null;
       } else {
-        // Reset after cooldown
-        this.failureCount = 0;
+        this.failureCount = 0; // Reset after cooldown
       }
     }
 
@@ -50,71 +68,51 @@ export class ICD10Service {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
-        // API params: sf=code,name implies search fields are code and name
-        const url = `${this.apiBaseUrl}?sf=code,name&terms=${encodeURIComponent(query)}`;
+        const url = new URL(this.apiBaseUrl);
+        url.searchParams.append("terms", terms);
+        url.searchParams.append("sf", sf);
+        url.searchParams.append("maxList", maxList.toString());
 
-        const response = await fetch(url, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
+        const response = await fetch(url.toString(), {
+          headers: { "Content-Type": "application/json" },
           signal: controller.signal
         });
-
+        
         clearTimeout(timeoutId);
 
         if (response.ok) {
-          // Response format: [count, [codes], null, [[code, description], ...]]
           const data = await response.json();
+          // NIH API response: [count, [codes], null, [[code, description], ...]]
           
-          const results: ICD10Code[] = [];
+          const result = new ICD10SearchResult();
+          const details = data.length > 3 ? data[3] : [];
           
-          // The 4th element (index 3) contains the detailed list of [code, description]
-          if (Array.isArray(data) && data.length > 3 && Array.isArray(data[3])) {
-            const details = data[3];
-            for (const detail of details) {
-              if (Array.isArray(detail) && detail.length >= 2) {
+          details.forEach((detail: any[]) => {
+            if (detail.length >= 2) {
                 const code = detail[0];
                 const description = detail[1];
-                // Extract category (part before the dot)
                 const category = code.includes('.') ? code.split('.')[0] : code;
-                
-                results.push({ code, description, category });
-              }
+                result.add_code({ code, description, category });
             }
-          }
+          });
 
-          // Reset failure count on success
-          this.failureCount = 0;
-          return results;
+          this.failureCount = 0; // Reset on success
+          return result;
         } else {
-          // HTTP Error
-          console.warn(`[ICD10Service] Request failed with status: ${response.status}`);
           retries++;
         }
-      } catch (error: any) {
-        if (error.name === 'AbortError') {
-           console.warn(`[ICD10Service] Request timed out after ${this.timeout}ms`);
-        } else {
-           console.warn(`[ICD10Service] Network error:`, error);
-        }
+      } catch (error) {
+        console.error(`ICD-10 API Request failed (Attempt ${retries + 1})`, error);
         retries++;
       }
     }
 
     // All retries failed
-    this.handleFailure();
-    return null;
-  }
-
-  private handleFailure() {
     this.failureCount++;
-    console.error(`[ICD10Service] Request failed. Failure count: ${this.failureCount}`);
-    
     if (this.failureCount >= this.circuitBreakerThreshold) {
       this.circuitBreakerOpenUntil = Date.now() + this.circuitBreakerCooldown;
-      console.error(`[ICD10Service] Circuit breaker ACTIVATED. Open until ${new Date(this.circuitBreakerOpenUntil).toLocaleTimeString()}`);
     }
+    
+    return null;
   }
 }
-
-// Export singleton instance
-export const icd10Service = new ICD10Service();

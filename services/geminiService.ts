@@ -1,23 +1,23 @@
-import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { NoteType } from "../types";
-import {
-  MEDICAL_NOTE_MASTER_PROMPT_V1,
-  STANDARD_SOAP_INSTRUCTIONS_V1,
-  SOAP_LIST_FORMAT_INSTRUCTIONS_V1,
-  PSYCHIATRY_NOTE_INSTRUCTIONS_V1,
-  COMPREHENSIVE_MEDICAL_NOTE_INSTRUCTIONS_V1,
-  OPERATIVE_NOTE_INSTRUCTIONS_V1,
-  DISCHARGE_SUMMARY_INSTRUCTIONS_V1
-} from "./promptTemplates";
+
+import { GoogleGenAI } from "@google/genai";
+import { NoteType, AIMessage, FrontendRequest, TranslateLangType } from "../types";
+import { Manager } from "./managerService";
+import { MEDICAL_NOTE_MASTER_PROMPT_V1 } from "./promptTemplates";
 
 // Simple logger to mimic the Python logger interface
 const logger = {
   info: (msg: string, ...args: any[]) => console.log(`[INFO] ${msg}`, ...args),
   error: (msg: string, ...args: any[]) => console.error(`[ERROR] ${msg}`, ...args),
   debug: (msg: string, ...args: any[]) => console.debug(`[DEBUG] ${msg}`, ...args),
+  warning: (msg: string, ...args: any[]) => console.warn(`[WARN] ${msg}`, ...args),
 };
 
-export class GeminiService {
+export interface IProvider {
+  chat_completion(prompt: string, system_prompt: string, stream_handler?: any): Promise<AIMessage>;
+  parse_json(response: AIMessage): any;
+}
+
+export class GeminiService implements IProvider {
   private ai: GoogleGenAI | null = null;
   private model: string;
   private apiKey: string | undefined;
@@ -41,158 +41,124 @@ export class GeminiService {
   }
 
   /**
-   * Generates specific system instructions based on the medical context using the Master Prompt Template.
+   * Generic chat completion method matching the IProvider interface expected by Python services.
    */
-  private getSystemInstruction(noteType: NoteType): string {
-    let specificInstructions = '';
+  public async chat_completion(
+    prompt: string, 
+    system_prompt: string, 
+    stream_handler: any = false
+  ): Promise<AIMessage> {
+    logger.debug("chat_completion called");
 
-    switch (noteType) {
-      case NoteType.Psychiatry:
-        specificInstructions = PSYCHIATRY_NOTE_INSTRUCTIONS_V1;
-        break;
-      case NoteType.Operative:
-        specificInstructions = OPERATIVE_NOTE_INSTRUCTIONS_V1;
-        break;
-      case NoteType.SOAPList:
-        specificInstructions = SOAP_LIST_FORMAT_INSTRUCTIONS_V1;
-        break;
-      case NoteType.Comprehensive:
-        specificInstructions = COMPREHENSIVE_MEDICAL_NOTE_INSTRUCTIONS_V1;
-        break;
-      case NoteType.DischargeSummary:
-        specificInstructions = DISCHARGE_SUMMARY_INSTRUCTIONS_V1;
-        break;
-      case NoteType.StandardSOAP:
-      default:
-        specificInstructions = STANDARD_SOAP_INSTRUCTIONS_V1;
-        break;
+    if (!this.ai) {
+      // Mock response for demo mode
+      return { content: JSON.stringify({ mock: "response", status: "success" }) };
     }
 
-    // Inject values into the Master Prompt
-    let prompt = MEDICAL_NOTE_MASTER_PROMPT_V1;
-    
-    // Replace {{note_type_specific_instructions_payload}}
-    prompt = prompt.replace('{{note_type_specific_instructions_payload}}', specificInstructions);
-    
-    // Replace {{agent_name}}
-    prompt = prompt.replace('{{agent_name}}', 'MediGentX AI');
-    
-    // Replace {{core_mission}}
-    prompt = prompt.replace('{{core_mission}}', 'Assist healthcare professionals in generating accurate, professional medical documentation.');
-    
-    // Replace {{response_language}} (Defaulting to English, could be dynamic)
-    prompt = prompt.replace('{{response_language}}', 'English (or matches input language)');
-    
-    // Replace {{current_date_from_nexus}}
-    prompt = prompt.replace('{{current_date_from_nexus}}', new Date().toLocaleDateString());
-
-    return prompt;
+    try {
+      const response = await this.ai.models.generateContent({
+        model: this.model,
+        contents: prompt,
+        config: {
+          systemInstruction: system_prompt,
+          temperature: 0.1,
+        }
+      });
+      
+      const text = response.text || "";
+      return { content: text };
+    } catch (error) {
+      logger.error("Gemini API Error", error);
+      throw error;
+    }
   }
 
   /**
-   * Streaming chat completion method.
-   * Mirrors the Python `chat_completion(stream_handler=True)` logic.
+   * Parses JSON from an AIMessage, cleaning up Markdown code blocks if present.
    */
+  public parse_json(response: AIMessage): any {
+    try {
+      let text = response.content.trim();
+      
+      // Remove markdown code blocks ```json ... ```
+      if (text.startsWith("```json")) {
+        text = text.replace(/^```json\s*/, "").replace(/\s*```$/, "");
+      } else if (text.startsWith("```")) {
+        text = text.replace(/^```\s*/, "").replace(/\s*```$/, "");
+      }
+
+      return JSON.parse(text);
+    } catch (error) {
+      logger.error("Failed to parse JSON", error, response.content);
+      throw error;
+    }
+  }
+
+  // --- Integration with Manager ---
+
+  private getNoteTypeSystemPromptKey(noteType: NoteType): string {
+      switch (noteType) {
+        case NoteType.Psychiatry: return "NOTE_TYPE::Psychiatry";
+        case NoteType.Operative: return "NOTE_TYPE::OperativeNote";
+        case NoteType.SOAPList: return "NOTE_TYPE::SOAPList";
+        case NoteType.Comprehensive: return "NOTE_TYPE::Comprehensive";
+        case NoteType.DischargeSummary: return "NOTE_TYPE::DischargeSummary";
+        case NoteType.StandardSOAP:
+        default: return "NOTE_TYPE::StandardSOAP";
+      }
+  }
+
   public async *streamChat(
     history: { role: string; content: string }[],
     noteType: NoteType,
     message: string
   ): AsyncGenerator<string, void, unknown> {
-    
-    logger.info("Starting chat completion", { 
-      noteType, 
-      historyLength: history.length, 
-      messageLength: message.length 
-    });
-
-    // 1. Handle Mock/Fallback Mode
     if (!this.ai) {
-      yield* this.generateMockResponse();
+      yield "Demo Mode: Unable to stream chat without API Key.";
       return;
     }
 
     try {
-      // 2. Configure Chat
-      const chat = this.ai.chats.create({
-        model: this.model,
-        config: {
-          systemInstruction: this.getSystemInstruction(noteType),
-          temperature: 0.2, // Low temperature for medical accuracy
-          maxOutputTokens: 4000, // Increased for full notes
-        },
-        history: history.map(h => ({
-          role: h.role,
-          parts: [{ text: h.content }]
-        }))
-      });
+        // Use Manager for advanced workflow
+        // This simulates a streaming interface by yielding progress updates
+        
+        let finalResponse = "";
+        const progressHandler = (msg: string) => {
+             // In a real implementation with generator, we can't easily yield from callback
+             // But we can simulate "thinking" steps or use a queue.
+             // For this implementation, we will log progress
+             logger.info("Progress:", msg);
+        };
 
-      // 3. Execute Stream
-      const result = await chat.sendMessageStream({ message });
+        const manager = new Manager(this, progressHandler);
+        
+        const request: FrontendRequest = {
+            llm_provider: "gemini",
+            llm_model: this.model,
+            session_id: `sess_${Date.now()}`,
+            system_prompt: this.getNoteTypeSystemPromptKey(noteType),
+            user_prompt: message,
+            language: TranslateLangType.ENGLISH // Default
+        };
 
-      for await (const chunk of result) {
-        if (chunk.text) {
-          yield chunk.text;
+        // Yield initial thought to show it's working
+        yield "> *Initializing MediGentX Agent Swarm...*\n\n";
+
+        // Since Manager.process is async and not a generator, we wait for full result
+        // But we can yield "steps" based on timing or if we refactor Manager to be a generator
+        // For now, we wait.
+        
+        const response = await manager.process(request);
+        
+        if (response.message.content) {
+            yield response.message.content;
         }
-      }
-
-      logger.info("Chat stream completed successfully");
 
     } catch (error) {
-      logger.error("Gemini API Error in streamChat", error);
-      yield "\n\n**Error: Unable to connect to Medical AI Service. Please check your connection or credentials.**";
-    }
-  }
-
-  /**
-   * Generates a structured JSON response.
-   * Mirrors the Python `parse_json` logic.
-   */
-  public async generateJson(
-    noteType: NoteType, 
-    prompt: string
-  ): Promise<any> {
-    logger.info("Starting JSON generation", { noteType });
-
-    if (!this.ai) {
-        throw new Error("Cannot generate JSON in demo mode");
-    }
-
-    try {
-        const response = await this.ai.models.generateContent({
-            model: this.model,
-            contents: prompt,
-            config: {
-                systemInstruction: this.getSystemInstruction(noteType),
-                responseMimeType: "application/json",
-            }
-        });
-        
-        const text = response.text;
-        if (!text) throw new Error("Empty response from model");
-        
-        const json = JSON.parse(text);
-        logger.info("JSON parsing successful");
-        return json;
-
-    } catch (error) {
-        logger.error("Failed to generate/parse JSON", error);
-        throw error;
-    }
-  }
-
-  /**
-   * Fallback generator for demo mode
-   */
-  private async *generateMockResponse(): AsyncGenerator<string, void, unknown> {
-    const mockResponse = `Based on the patient's presentation, here is the generated SOAP note:\n\n# Subjective\nPatient reports a 3-day history of sore throat and low-grade fever (100.4°F). Describes pain as 6/10, worsening with swallowing. Denies cough or rhinorrhea.\n\n# Objective\n- Vitals: T 100.4, BP 120/80, HR 88, RR 16\n- HEENT: Pharynx erythematous with bilateral tonsillar exudate (2+). Anterior cervical lymphadenopathy present.\n- Lungs: Clear to auscultation.\n\n# Assessment\n1. Acute Pharyngitis, likely Streptococcal\n2. Fever\n\n# Plan\n1. Perform Rapid Strep Test.\n2. If positive, start Amoxicillin 500mg BID x 10 days.\n3. Supportive care: Acetaminophen, hydration.\n4. Follow up if symptoms worsen.`;
-    
-    const chunks = mockResponse.split(/(?=[ #\n])/);
-    for (const chunk of chunks) {
-      await new Promise(resolve => setTimeout(resolve, 30 + Math.random() * 50));
-      yield chunk;
+      logger.error("Stream Chat Error", error);
+      yield "\n\n**Error: Service unavailable or Agent workflow failed.**";
     }
   }
 }
 
-// Export a singleton or factory if needed, or just the class
 export const geminiService = new GeminiService();

@@ -1,3 +1,4 @@
+
 /**
  * MedigentX Prompt Templates
  * Ported from Python Agent System
@@ -14,6 +15,32 @@ export const MEDICAL_NOTE_MASTER_PROMPT_V1 = `
     Your core mission is to: **{{core_mission}}**
     Your primary goal is to generate accurate, complete, concise, and clearly structured Doctor's Notes based on the provided clinical information. Your output should adhere to standard clinical formatting, be suitable for inclusion in official medical records, and effectively support communication among healthcare professionals. Emphasis must be placed on medical accuracy and high documentation efficiency.
 </Agent_Identity_and_Core_Directive>
+
+<Tool_Definition_and_Usage_Protocol>
+    **Available Tools for this Task:**
+    {{available_tools_list}}
+    
+    **General Tool Usage Rules:**
+    1. Only call tools that are explicitly listed as available.
+    2. Adhere strictly to the tool's expected input schema.
+    3. Analyze observations from tool calls to inform your next steps.
+    4. **CRITICAL:** To call a tool, your response MUST be a valid JSON object with a single top-level key "tool_calls". This key must contain a list of tool call objects. DO NOT output any other text or reasoning when calling a tool.
+
+    **Tool Call Example:**
+    If you decide to use the \`icd10_search_tool\`, your entire response for that turn should be ONLY the following JSON:
+    \`\`\`json
+    {
+      "tool_calls": [
+        {
+          "tool_name": "icd10_search_tool",
+          "parameters": {
+            "query": "viral pharyngitis"
+          }
+        }
+      ]
+    }
+    \`\`\`
+</Tool_Definition_and_Usage_Protocol>
 
 <Operational_Guidelines>
     **Your Role:**
@@ -218,6 +245,26 @@ export const DISCHARGE_SUMMARY_INSTRUCTIONS_V1 = `
 
 ### XIII. Provider Input:
 - [Synthesize raw provider notes into appropriate sections.]
+`;
+
+export const SOAP_NARRATIVE_FORMAT_INSTRUCTIONS_V1 = `
+**Note Type:** SOAP Note - Narrative Format Emphasis
+
+**Subjective (S):**
+* Chief Complaint (CC): [Summarize verbatim.]
+* HPI: [Detailed narrative description.]
+* PMH/Meds/Allergies/Social/Family/ROS: [Narrative summary.]
+
+**Objective (O):**
+* Vital Signs & Physical Examination: [Present in a narrative paragraph. "On examination, vital signs were...".]
+* Laboratory/Diagnostic Findings: [Narrative summary.]
+
+**Assessment (A):**
+* Clinical Impression: [Narrative.]
+* Differentials: [Narrative.]
+
+**Plan (P):**
+* Treatment Plan/Investigations/Advice/Follow-up: [Narrative description.]
 `;
 
 export const ADAPTION_STRATEGIST_PROMPT_V1 = `

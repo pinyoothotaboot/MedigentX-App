@@ -1,6 +1,7 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage, Patient } from '../types';
-import { Send, Mic, Sparkles, AlertCircle, StopCircle } from 'lucide-react';
+import { Send, Mic, Sparkles, AlertCircle, StopCircle, BrainCircuit } from 'lucide-react';
 import { Button } from './Button';
 import { geminiService } from '../services/geminiService';
 
@@ -133,17 +134,17 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ patient, onUpdateN
       <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-slate-900 flex justify-between items-center shadow-sm z-10">
         <div>
           <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-medical-500" />
-            AI Assistant
+            <BrainCircuit className="w-5 h-5 text-medical-500" />
+            MediGentX AI Swarm
             {isStreaming && (
                 <span className="flex h-2.5 w-2.5 relative ml-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
                 </span>
             )}
           </h2>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Connected to MedigentX Backend • {patient.noteTypePreference} Context
+            Multi-Agent System Active • {patient.noteTypePreference} Context
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -189,7 +190,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ patient, onUpdateN
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={isStreaming ? "AI is typing..." : "Describe symptoms, exams, or ask for suggestions..."}
+            placeholder={isStreaming ? "AI Agents are working..." : "Describe symptoms, exams, or ask for suggestions..."}
             disabled={isStreaming}
             className="w-full pl-4 pr-24 py-4 bg-gray-50 dark:bg-slate-800 border-0 rounded-xl shadow-inner focus:ring-2 focus:ring-medical-500 focus:bg-white dark:focus:bg-slate-800 transition-all text-gray-900 dark:text-gray-100"
           />
@@ -215,7 +216,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ patient, onUpdateN
           </div>
         </form>
         <p className="text-center text-xs text-gray-400 mt-2">
-            MediGentX AI can make mistakes. Verify all medical information.
+            MediGentX AI Swarm v2.0 • Verifying all outputs via Verification Agent
         </p>
       </div>
     </div>
