@@ -94,6 +94,17 @@ export interface ICD10Code {
   category: string;
 }
 
+export interface Template {
+  id: string;
+  name: string;
+  type: 'note' | 'prompt';
+  category: string;
+  content: string | Record<string, any>;
+  isUserCreated: boolean;
+  createdAt?: string;
+  lastModified?: string;
+}
+
 // --- Multi-Agent System Types ---
 
 export enum TranslateLangType {

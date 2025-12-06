@@ -1,5 +1,6 @@
 
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { Template } from '../types';
 
 interface Notification {
   id: string;
@@ -18,7 +19,7 @@ interface AppState {
   notifications: Notification[];
   isLoading: boolean;
   isVoiceRecording: boolean;
-  templates: any[]; // Define Template type properly in types.ts
+  templates: Template[];
 }
 
 const initialState: AppState = {
@@ -62,10 +63,10 @@ const appSlice = createSlice({
     setVoiceRecording: (state, action: PayloadAction<boolean>) => {
       state.isVoiceRecording = action.payload;
     },
-    addTemplate: (state, action: PayloadAction<any>) => {
+    addTemplate: (state, action: PayloadAction<Template>) => {
       state.templates.push(action.payload);
     },
-    updateTemplate: (state, action: PayloadAction<any>) => {
+    updateTemplate: (state, action: PayloadAction<Template>) => {
       const index = state.templates.findIndex(t => t.id === action.payload.id);
       if (index !== -1) {
         state.templates[index] = action.payload;
