@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage, Patient } from '../types';
 import { Send, Mic, Sparkles, AlertCircle, StopCircle } from 'lucide-react';
 import { Button } from './Button';
-import { streamMedicalResponse } from '../services/geminiService';
+import { geminiService } from '../services/geminiService';
 
 interface ChatInterfaceProps {
   patient: Patient;
@@ -89,7 +89,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ patient, onUpdateN
 
       let fullContent = '';
       
-      const stream = streamMedicalResponse(history, patient.noteTypePreference, userMsg.content);
+      // Use the service class instance
+      const stream = geminiService.streamChat(history, patient.noteTypePreference, userMsg.content);
 
       for await (const chunk of stream) {
         fullContent += chunk;
