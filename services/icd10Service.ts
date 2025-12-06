@@ -34,7 +34,7 @@ export class ICD10Service {
 
   constructor(
     maxRetries = 3,
-    timeout = 5000, // 5 seconds
+    timeout = 10000, // Increased to 10 seconds to prevent premature timeouts
     circuitBreakerThreshold = 3,
     circuitBreakerCooldown = 30000 // 30 seconds
   ) {
@@ -101,8 +101,12 @@ export class ICD10Service {
         } else {
           retries++;
         }
-      } catch (error) {
-        console.error(`ICD-10 API Request failed (Attempt ${retries + 1})`, error);
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+             console.error(`ICD-10 API Request timed out after ${this.timeout}ms`);
+        } else {
+             console.error(`ICD-10 API Request failed (Attempt ${retries + 1})`, error);
+        }
         retries++;
       }
     }

@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 import { NoteType, AIMessage, FrontendRequest, TranslateLangType, IProvider } from "../types";
 import { Manager } from "./managerService";
@@ -9,6 +10,8 @@ const logger = {
   debug: (msg: string, ...args: any[]) => console.debug(`[DEBUG] ${msg}`, ...args),
   warning: (msg: string, ...args: any[]) => console.warn(`[WARN] ${msg}`, ...args),
 };
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 export class GeminiService implements IProvider {
   private ai: GoogleGenAI | null = null;
@@ -51,6 +54,7 @@ export class GeminiService implements IProvider {
 
   /**
    * Generic chat completion method matching the IProvider interface expected by Python services.
+   * Includes exponential backoff for 429 Rate Limit errors.
    */
   public async chat_completion(
     prompt: string, 
@@ -64,22 +68,43 @@ export class GeminiService implements IProvider {
       return { content: JSON.stringify({ mock: "response", status: "success", note: "API Key Missing - Running in Demo Mode" }) };
     }
 
-    try {
-      const response = await this.ai.models.generateContent({
-        model: this.model,
-        contents: prompt,
-        config: {
-          systemInstruction: system_prompt,
-          temperature: 0.1,
+    let retries = 0;
+    const maxRetries = 5;
+    const baseDelay = 2000; // Start with 2 seconds
+
+    while (true) {
+        try {
+            const response = await this.ai.models.generateContent({
+                model: this.model,
+                contents: prompt,
+                config: {
+                systemInstruction: system_prompt,
+                temperature: 0.1,
+                }
+            });
+            
+            const text = response.text || "";
+            return { content: text };
+        } catch (error: any) {
+            // Check for rate limit errors (429 or RESOURCE_EXHAUSTED)
+            const isRateLimit = 
+                error?.status === 429 || 
+                error?.response?.status === 429 || 
+                error?.message?.includes('429') || 
+                error?.message?.includes('RESOURCE_EXHAUSTED');
+
+            if (isRateLimit && retries < maxRetries) {
+                retries++;
+                const waitTime = baseDelay * Math.pow(2, retries - 1); // 2s, 4s, 8s, 16s...
+                logger.warning(`Gemini Rate Limit hit. Retrying in ${waitTime}ms... (Attempt ${retries}/${maxRetries})`);
+                await delay(waitTime);
+                continue;
+            }
+
+            logger.error("Gemini API Error", error);
+            // Return a safe error message instead of crashing
+            return { content: `Error: Unable to generate content. ${error?.message || "Unknown error"}` };
         }
-      });
-      
-      const text = response.text || "";
-      return { content: text };
-    } catch (error) {
-      logger.error("Gemini API Error", error);
-      // Return a safe error message instead of crashing
-      return { content: `Error: Unable to generate content. ${(error as any)?.message}` };
     }
   }
 
