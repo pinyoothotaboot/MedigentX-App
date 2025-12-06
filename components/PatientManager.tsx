@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Patient, NoteType } from '../types';
 import { User, Search, Plus, UserPlus } from 'lucide-react';
@@ -9,6 +10,14 @@ interface PatientManagerProps {
   onSelectPatient: (patient: Patient) => void;
   onAddPatient: (patient: Patient) => void;
 }
+
+// Utility to generate UUID safely
+const generateId = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return Math.random().toString(36).substring(2) + Date.now().toString(36);
+};
 
 export const PatientManager: React.FC<PatientManagerProps> = ({ 
   patients, 
@@ -33,7 +42,7 @@ export const PatientManager: React.FC<PatientManagerProps> = ({
     if (!newPatient.name || !newPatient.age || !newPatient.mrn) return;
     
     const patient: Patient = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       name: newPatient.name,
       age: Number(newPatient.age),
       mrn: newPatient.mrn,

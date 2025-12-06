@@ -11,6 +11,14 @@ interface ChatInterfaceProps {
   userId: string;
 }
 
+// Utility to generate UUID safely
+const generateId = () => {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return Math.random().toString(36).substring(2) + Date.now().toString(36);
+};
+
 export const ChatInterface: React.FC<ChatInterfaceProps> = ({ patient, onUpdateNote, userId }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -23,6 +31,21 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ patient, onUpdateN
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Safe check for API key presence
+  const [hasApiKey, setHasApiKey] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+        setHasApiKey(true);
+      } else {
+        setHasApiKey(false);
+      }
+    } catch {
+      setHasApiKey(false);
+    }
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -63,7 +86,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ patient, onUpdateN
     if (!input.trim() || isStreaming) return;
 
     const userMsg: ChatMessage = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       role: 'user',
       content: input,
       timestamp: Date.now()
@@ -73,7 +96,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ patient, onUpdateN
     setInput('');
     setIsStreaming(true);
 
-    const assistantMsgId = crypto.randomUUID();
+    const assistantMsgId = generateId();
     
     // Optimistic empty message for streaming
     setMessages(prev => [...prev, {
@@ -118,7 +141,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ patient, onUpdateN
 
     } catch (error) {
       setMessages(prev => [...prev, {
-        id: crypto.randomUUID(),
+        id: generateId(),
         role: 'system',
         content: 'Error generating response. Please try again.',
         timestamp: Date.now()
@@ -148,7 +171,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ patient, onUpdateN
           </p>
         </div>
         <div className="flex items-center gap-2">
-            {!process.env.API_KEY && (
+            {!hasApiKey && (
                 <div className="flex items-center text-xs text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20 px-2 py-1 rounded border border-yellow-200 dark:border-yellow-900">
                     <AlertCircle className="w-3 h-3 mr-1" />
                     Demo Mode (Mock API)

@@ -25,7 +25,7 @@ export const MobileNavigation: React.FC = () => {
   return (
     <>
       {/* Mobile Header */}
-      <div className="md:hidden bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
+      <div className="md:hidden bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between z-20 relative">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -37,23 +37,14 @@ export const MobileNavigation: React.FC = () => {
             MediGentX
           </div>
         </div>
-        
-        <div className="flex items-center gap-2">
-          {/* <button
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            <Search size={20} className="text-gray-600 dark:text-gray-300" />
-          </button> */}
-        </div>
       </div>
 
       {/* Mobile Menu Overlay */}
       {isMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50 bg-black bg-opacity-50" onClick={() => setIsMenuOpen(false)}>
-          <div className="w-80 max-w-[80vw] bg-white dark:bg-slate-800 h-full shadow-xl" onClick={e => e.stopPropagation()}>
+          <div className="w-80 max-w-[80vw] bg-white dark:bg-slate-800 h-full shadow-xl flex flex-col" onClick={e => e.stopPropagation()}>
             {/* Menu Header */}
-            <div className="px-4 py-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="px-4 py-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-semibold text-gray-900 dark:text-white">MediGentX</h2>
                 <button
@@ -66,12 +57,12 @@ export const MobileNavigation: React.FC = () => {
             </div>
 
             {/* Search Bar */}
-            <div className="px-4 py-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="px-4 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
               <SearchBar onResultSelect={() => setIsMenuOpen(false)} />
             </div>
 
             {/* Navigation Items */}
-            <nav className="py-4">
+            <nav className="py-4 flex-1 overflow-y-auto">
               {navigationItems.map(({ key, icon: Icon, label }) => (
                 <button
                   key={key}
@@ -91,7 +82,7 @@ export const MobileNavigation: React.FC = () => {
             </nav>
 
             {/* Footer */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
               <div className="text-sm text-gray-500 dark:text-gray-400 text-center">
                 AI-Powered Medical Assistant
               </div>

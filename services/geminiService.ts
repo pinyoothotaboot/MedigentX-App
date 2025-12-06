@@ -22,7 +22,17 @@ export class GeminiService implements IProvider {
   private apiKey: string | undefined;
 
   constructor(model: string = 'gemini-2.5-flash') {
-    this.apiKey = process.env.API_KEY;
+    // Safely access process.env to prevent errors in browser environments
+    try {
+      if (typeof process !== 'undefined' && process.env) {
+        this.apiKey = process.env.API_KEY;
+      } else {
+        this.apiKey = undefined;
+      }
+    } catch (e) {
+      console.warn("process.env is not accessible");
+      this.apiKey = undefined;
+    }
     this.model = model;
     
     logger.info("Initializing GeminiService", { model, hasKey: !!this.apiKey });

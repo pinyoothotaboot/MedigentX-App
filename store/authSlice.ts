@@ -10,10 +10,23 @@ interface AuthState {
   error: string | null;
 }
 
+// Safely parse user from localStorage
+const getUserFromStorage = (): User | null => {
+  try {
+    const userStr = localStorage.getItem('user');
+    return userStr ? JSON.parse(userStr) : null;
+  } catch (e) {
+    return null;
+  }
+};
+
+const token = localStorage.getItem('authToken');
+const user = getUserFromStorage();
+
 const initialState: AuthState = {
-  user: null,
-  token: localStorage.getItem('authToken'),
-  isAuthenticated: !!localStorage.getItem('authToken'),
+  user: user,
+  token: token,
+  isAuthenticated: !!token,
   loading: false,
   error: null,
 };
@@ -152,9 +165,12 @@ const authSlice = createSlice({
           state.user = action.payload.user;
           state.token = action.payload.token;
         } else {
-          state.isAuthenticated = false;
-          state.user = null;
-          state.token = null;
+          // Only clear if we thought we were authenticated but verification failed
+          if (state.isAuthenticated) {
+            state.isAuthenticated = false;
+            state.user = null;
+            state.token = null;
+          }
         }
       });
   }
