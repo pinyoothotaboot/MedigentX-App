@@ -1,5 +1,13 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { NoteType } from "../types";
+import {
+  MEDICAL_NOTE_MASTER_PROMPT_V1,
+  STANDARD_SOAP_INSTRUCTIONS_V1,
+  SOAP_LIST_FORMAT_INSTRUCTIONS_V1,
+  PSYCHIATRY_NOTE_INSTRUCTIONS_V1,
+  COMPREHENSIVE_MEDICAL_NOTE_INSTRUCTIONS_V1,
+  OPERATIVE_NOTE_INSTRUCTIONS_V1
+} from "./promptTemplates";
 
 // Simple logger to mimic the Python logger interface
 const logger = {
@@ -32,19 +40,49 @@ export class GeminiService {
   }
 
   /**
-   * Generates specific system instructions based on the medical context.
+   * Generates specific system instructions based on the medical context using the Master Prompt Template.
    */
   private getSystemInstruction(noteType: NoteType): string {
-    const baseInstruction = `You are an expert medical AI assistant for MediGentX. Your goal is to assist healthcare professionals in generating accurate, professional medical documentation.`;
-    
+    let specificInstructions = '';
+
     switch (noteType) {
       case NoteType.Psychiatry:
-        return `${baseInstruction} Focus on mental status examination, mood, affect, and risk assessment. Generate notes in a psychiatric format.`;
+        specificInstructions = PSYCHIATRY_NOTE_INSTRUCTIONS_V1;
+        break;
       case NoteType.Operative:
-        return `${baseInstruction} Focus on surgical procedure details, findings, anesthesia, and immediate post-op plan.`;
+        specificInstructions = OPERATIVE_NOTE_INSTRUCTIONS_V1;
+        break;
+      case NoteType.SOAPList:
+        specificInstructions = SOAP_LIST_FORMAT_INSTRUCTIONS_V1;
+        break;
+      case NoteType.Comprehensive:
+        specificInstructions = COMPREHENSIVE_MEDICAL_NOTE_INSTRUCTIONS_V1;
+        break;
+      case NoteType.StandardSOAP:
       default:
-        return `${baseInstruction} Generate standard SOAP notes (Subjective, Objective, Assessment, Plan). Ensure medical terminology is precise.`;
+        specificInstructions = STANDARD_SOAP_INSTRUCTIONS_V1;
+        break;
     }
+
+    // Inject values into the Master Prompt
+    let prompt = MEDICAL_NOTE_MASTER_PROMPT_V1;
+    
+    // Replace {{note_type_specific_instructions_payload}}
+    prompt = prompt.replace('{{note_type_specific_instructions_payload}}', specificInstructions);
+    
+    // Replace {{agent_name}}
+    prompt = prompt.replace('{{agent_name}}', 'MediGentX AI');
+    
+    // Replace {{core_mission}}
+    prompt = prompt.replace('{{core_mission}}', 'Assist healthcare professionals in generating accurate, professional medical documentation.');
+    
+    // Replace {{response_language}} (Defaulting to English, could be dynamic)
+    prompt = prompt.replace('{{response_language}}', 'English (or matches input language)');
+    
+    // Replace {{current_date_from_nexus}}
+    prompt = prompt.replace('{{current_date_from_nexus}}', new Date().toLocaleDateString());
+
+    return prompt;
   }
 
   /**
@@ -76,7 +114,7 @@ export class GeminiService {
         config: {
           systemInstruction: this.getSystemInstruction(noteType),
           temperature: 0.2, // Low temperature for medical accuracy
-          maxOutputTokens: 2000,
+          maxOutputTokens: 4000, // Increased for full notes
         },
         history: history.map(h => ({
           role: h.role,
