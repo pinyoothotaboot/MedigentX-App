@@ -11,7 +11,8 @@ export enum NoteType {
   SOAPList = 'SOAPList',
   Psychiatry = 'Psychiatry',
   Comprehensive = 'Comprehensive',
-  Operative = 'Operative'
+  Operative = 'Operative',
+  DischargeSummary = 'DischargeSummary'
 }
 
 export interface Patient {

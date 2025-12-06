@@ -6,7 +6,8 @@ import {
   SOAP_LIST_FORMAT_INSTRUCTIONS_V1,
   PSYCHIATRY_NOTE_INSTRUCTIONS_V1,
   COMPREHENSIVE_MEDICAL_NOTE_INSTRUCTIONS_V1,
-  OPERATIVE_NOTE_INSTRUCTIONS_V1
+  OPERATIVE_NOTE_INSTRUCTIONS_V1,
+  DISCHARGE_SUMMARY_INSTRUCTIONS_V1
 } from "./promptTemplates";
 
 // Simple logger to mimic the Python logger interface
@@ -57,6 +58,9 @@ export class GeminiService {
         break;
       case NoteType.Comprehensive:
         specificInstructions = COMPREHENSIVE_MEDICAL_NOTE_INSTRUCTIONS_V1;
+        break;
+      case NoteType.DischargeSummary:
+        specificInstructions = DISCHARGE_SUMMARY_INSTRUCTIONS_V1;
         break;
       case NoteType.StandardSOAP:
       default:
