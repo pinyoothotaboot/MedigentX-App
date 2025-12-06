@@ -8,6 +8,29 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script>
+      // Robust Polyfills for Browser Environment
+      window.global = window;
+      
+      // Polyfill process
+      window.process = window.process || {
+        env: {
+          NODE_ENV: 'production',
+          API_KEY: '' // Prevent undefined access
+        },
+        version: '',
+        nextTick: function(cb) { setTimeout(cb, 0); }
+      };
+
+      // Polyfill Buffer (minimal implementation often required by deps)
+      window.Buffer = window.Buffer || {
+        isBuffer: function() { return false; },
+        from: function(str) { 
+          if (typeof str === 'string') return new TextEncoder().encode(str); 
+          return []; 
+        },
+        alloc: function() { return []; }
+      };
+      
       tailwind.config = {
         darkMode: 'class',
         theme: {

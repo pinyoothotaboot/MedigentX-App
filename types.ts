@@ -264,3 +264,8 @@ export interface RefinementPlan {
 export interface AIMessage {
   content: string;
 }
+
+export interface IProvider {
+  chat_completion(prompt: string, system_prompt: string, stream_handler?: any): Promise<AIMessage>;
+  parse_json(response: AIMessage): any;
+}

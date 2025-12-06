@@ -1,5 +1,5 @@
 
-import { IProvider } from "./geminiService";
+import { IProvider } from "../types";
 import { RetryJsonParser } from "./retryJsonParser";
 import { UserQueryInternal, PlannerModel, PlanTask, PlanSubTask } from "../types";
 import { STRATEGIC_PLANNING_PROMPT_V1 } from "./promptTemplates";

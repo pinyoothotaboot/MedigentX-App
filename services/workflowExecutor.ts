@@ -1,5 +1,5 @@
 
-import { IProvider } from "./geminiService";
+import { IProvider } from "../types";
 import { RetryJsonParser } from "./retryJsonParser";
 import { AdaptionStrategist } from "./adaptionStrategist";
 import { Builder } from "./builderService";

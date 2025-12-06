@@ -1,5 +1,5 @@
 
-import { IProvider } from "./geminiService";
+import { IProvider } from "../types";
 import { RetryJsonParser } from "./retryJsonParser";
 import { AgentInstance, RefinementPlan } from "../types";
 import { ADAPTION_STRATEGIST_PROMPT_V1 } from "./promptTemplates";

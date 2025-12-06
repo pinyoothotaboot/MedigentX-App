@@ -1,5 +1,5 @@
 
-import { IProvider } from "./geminiService";
+import { IProvider } from "../types";
 import { RefinementPlan } from "../types";
 import { PROMPT_BUILDER_PROMPT_V1 } from "./promptTemplates";
 

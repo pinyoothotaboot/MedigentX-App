@@ -1,5 +1,5 @@
 
-import { IProvider } from "./geminiService";
+import { IProvider } from "../types";
 import { RetryJsonParser } from "./retryJsonParser";
 import { 
     PlannerModel, PlanTask, AgentTeamConfiguration, 

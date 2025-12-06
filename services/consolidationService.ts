@@ -1,5 +1,5 @@
 
-import { IProvider } from "./geminiService";
+import { IProvider } from "../types";
 import { WorkFlow } from "../types";
 import { OUTPUT_CONSOLIDATION_PROMPT_V1 } from "./promptTemplates";
 

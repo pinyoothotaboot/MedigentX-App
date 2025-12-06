@@ -1,6 +1,5 @@
-
 import { GoogleGenAI } from "@google/genai";
-import { NoteType, AIMessage, FrontendRequest, TranslateLangType } from "../types";
+import { NoteType, AIMessage, FrontendRequest, TranslateLangType, IProvider } from "../types";
 import { Manager } from "./managerService";
 
 // Simple logger to mimic the Python logger interface
@@ -11,29 +10,29 @@ const logger = {
   warning: (msg: string, ...args: any[]) => console.warn(`[WARN] ${msg}`, ...args),
 };
 
-export interface IProvider {
-  chat_completion(prompt: string, system_prompt: string, stream_handler?: any): Promise<AIMessage>;
-  parse_json(response: AIMessage): any;
-}
-
 export class GeminiService implements IProvider {
   private ai: GoogleGenAI | null = null;
   private model: string;
   private apiKey: string | undefined;
 
   constructor(model: string = 'gemini-2.5-flash') {
-    // Safely access process.env to prevent errors in browser environments
+    this.model = model;
+    this.apiKey = undefined;
+
+    // Extremely safe API key extraction
     try {
-      if (typeof process !== 'undefined' && process.env) {
-        this.apiKey = process.env.API_KEY;
-      } else {
-        this.apiKey = undefined;
+      // Check if 'process' exists globally (handled by polyfill or environment)
+      // @ts-ignore
+      if (typeof process !== 'undefined' && process && process.env) {
+        // @ts-ignore
+        const key = process.env.API_KEY;
+        if (key && typeof key === 'string' && key.length > 0) {
+          this.apiKey = key;
+        }
       }
     } catch (e) {
-      console.warn("process.env is not accessible");
-      this.apiKey = undefined;
+      console.warn("Failed to safely access process.env.API_KEY", e);
     }
-    this.model = model;
     
     logger.info("Initializing GeminiService", { model, hasKey: !!this.apiKey });
 
@@ -42,7 +41,8 @@ export class GeminiService implements IProvider {
         this.ai = new GoogleGenAI({ apiKey: this.apiKey });
         logger.info("GeminiService initialized successfully");
       } catch (e) {
-        logger.error("Failed to initialize GeminiService", e);
+        logger.error("Failed to initialize GoogleGenAI client", e);
+        this.ai = null;
       }
     } else {
         logger.info("Running in Mock/Demo Mode (No API Key found)");
@@ -61,7 +61,7 @@ export class GeminiService implements IProvider {
 
     if (!this.ai) {
       // Mock response for demo mode
-      return { content: JSON.stringify({ mock: "response", status: "success" }) };
+      return { content: JSON.stringify({ mock: "response", status: "success", note: "API Key Missing - Running in Demo Mode" }) };
     }
 
     try {
@@ -78,7 +78,8 @@ export class GeminiService implements IProvider {
       return { content: text };
     } catch (error) {
       logger.error("Gemini API Error", error);
-      throw error;
+      // Return a safe error message instead of crashing
+      return { content: `Error: Unable to generate content. ${(error as any)?.message}` };
     }
   }
 
@@ -99,7 +100,8 @@ export class GeminiService implements IProvider {
       return JSON.parse(text);
     } catch (error) {
       logger.error("Failed to parse JSON", error, response.content);
-      throw error;
+      // Return null or empty object instead of throwing to prevent unhandled promise rejections crashing the UI
+      return {}; 
     }
   }
 
@@ -123,7 +125,7 @@ export class GeminiService implements IProvider {
     message: string
   ): AsyncGenerator<string, void, unknown> {
     if (!this.ai) {
-      yield "Demo Mode: Unable to stream chat without API Key.";
+      yield "Demo Mode: Unable to stream chat without API Key. Please configure your environment with a valid API_KEY.";
       return;
     }
 
@@ -138,46 +140,52 @@ export class GeminiService implements IProvider {
         queue.push(`> ⚙️ ${msg}\n`);
     };
 
-    const manager = new Manager(this, progressHandler);
-    
-    const request: FrontendRequest = {
-        llm_provider: "gemini",
-        llm_model: this.model,
-        session_id: `sess_${Date.now()}`,
-        system_prompt: this.getNoteTypeSystemPromptKey(noteType),
-        user_prompt: message,
-        language: TranslateLangType.ENGLISH // Default
-    };
+    try {
+      const manager = new Manager(this, progressHandler);
+      
+      const request: FrontendRequest = {
+          llm_provider: "gemini",
+          llm_model: this.model,
+          session_id: `sess_${Date.now()}`,
+          system_prompt: this.getNoteTypeSystemPromptKey(noteType),
+          user_prompt: message,
+          language: TranslateLangType.ENGLISH // Default
+      };
 
-    // Start background process
-    manager.process(request)
-        .then(response => {
-            finalContent = response.message.content;
-            isComplete = true;
-        })
-        .catch(err => {
-            error = err;
-            isComplete = true;
-        });
+      // Start background process
+      manager.process(request)
+          .then(response => {
+              finalContent = response.message.content;
+              isComplete = true;
+          })
+          .catch(err => {
+              error = err;
+              isComplete = true;
+          });
 
-    // Generator loop that polls the queue
-    while (!isComplete || queue.length > 0) {
-        if (queue.length > 0) {
-            const msg = queue.shift()!;
-            yield msg;
-        } else {
-            // Small wait to prevent busy loop
-            await new Promise(resolve => setTimeout(resolve, 100));
-        }
-        
-        if (error) {
-            yield `\n❌ Error: ${error.message || "Unknown error occurred"}`;
-            return;
-        }
+      // Generator loop that polls the queue
+      while (!isComplete || queue.length > 0) {
+          if (queue.length > 0) {
+              const msg = queue.shift()!;
+              yield msg;
+          } else {
+              // Small wait to prevent busy loop
+              await new Promise(resolve => setTimeout(resolve, 100));
+          }
+          
+          if (error) {
+              yield `\n❌ Error: ${error.message || "Unknown error occurred"}`;
+              return;
+          }
+      }
+
+      // Yield final separator and content
+      yield "\n\n" + finalContent;
+
+    } catch (e) {
+      console.error("Critical error in streamChat", e);
+      yield "\n❌ Critical System Error: Failed to initialize workflow manager.";
     }
-
-    // Yield final separator and content
-    yield "\n\n" + finalContent;
   }
 }
 

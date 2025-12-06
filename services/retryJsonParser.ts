@@ -1,5 +1,5 @@
 
-import { IProvider } from "./geminiService";
+import { IProvider } from "../types";
 import { RETRY_JSON_PROMPT_V1 } from "./promptTemplates";
 
 // Simple logger

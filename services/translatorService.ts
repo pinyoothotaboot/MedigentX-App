@@ -1,5 +1,5 @@
 
-import { IProvider } from "./geminiService";
+import { IProvider } from "../types";
 import { TRANSLATE_PROMPT_V1, TRANSLATE_INPUT_PROMPT_V1 } from "./promptTemplates";
 
 const logger = {

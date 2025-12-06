@@ -1,5 +1,5 @@
 
-import { IProvider } from "./geminiService";
+import { IProvider } from "../types";
 import { RetryJsonParser } from "./retryJsonParser";
 import { UserQueryInternal } from "../types";
 import { ORCHESTRATOR_PROMPT_V1 } from "./promptTemplates";

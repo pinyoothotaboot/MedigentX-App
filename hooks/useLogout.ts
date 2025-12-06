@@ -1,10 +1,12 @@
 
 import { useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { AppDispatch } from '../store';
 import { logoutUser } from '../store/authSlice';
 
 export const useLogout = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
 
   const logout = async () => {
     try {
@@ -16,13 +18,13 @@ export const useLogout = () => {
         console.log('✅ Logout successful');
       }
       
-      // Redirect handled by router/auth state
-      window.location.href = '/login';
+      // Redirect handled by router
+      navigate('/login');
       
       return { success: true };
     } catch (error) {
       console.error('❌ Logout error:', error);
-      window.location.href = '/login';
+      navigate('/login');
       return { success: false, error };
     }
   };
