@@ -1,0 +1,7 @@
+{
+  "name": "MediGentX Web",
+  "description": "AI-Powered Medical Documentation Platform featuring real-time streaming chat, SOAP note generation, and secure patient management.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
